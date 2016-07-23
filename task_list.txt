@@ -1,10 +1,5 @@
 Low Bar
 
-2) Create routes for
-	a) GET
-	b) PUT
-	c) POST
-	d) DELETE
 3) Define (write down) possible client errors
 4) Define client success situations (these may become apparent as we go)
 5) Define server errors
@@ -21,9 +16,15 @@ Low Bar
 16) Describe file structure in README
 17) Be sure to list all additional assumptions. Try to have some discussion. In README.
 18) Comments!!!
+19) Add error response on a bad get
 
 LOW BAR COMPLETE
 1) Create basic web server
+2) Create routes for
+	a) GET
+	b) PUT
+	c) POST
+	d) DELETE
 
 VALIDATIONS
 
