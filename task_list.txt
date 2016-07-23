@@ -1,6 +1,5 @@
 Low Bar
 
-1) Create basic web server
 2) Create routes for
 	a) GET
 	b) PUT
@@ -22,6 +21,9 @@ Low Bar
 16) Describe file structure in README
 17) Be sure to list all additional assumptions. Try to have some discussion. In README.
 18) Comments!!!
+
+LOW BAR COMPLETE
+1) Create basic web server
 
 VALIDATIONS
 
