@@ -1,0 +1,2 @@
+1) Caches, specifically Redis. How do they work on a server?
+2) Think about what fully asynchronous means. This feels like a cheat to ask. FULLY, asynch.
