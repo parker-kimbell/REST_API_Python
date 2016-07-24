@@ -4,14 +4,9 @@ Low Bar
 4) Define client success situations (these may become apparent as we go)
 5) Define server errors
 6) Implement cache
-7) Create logic for GET
-8) Create logic for handling POST
-9) Create logic for handling PUT
-10) Create logic for handling DELETE
-11) Create persistent backend local database. MongoDB.
 12) Handle GET, PUT, DELETE on GUIDs that don't exist. 
 13) Create endpoint documentation on default route
-14) When a RUD is made against an a GUID that has expired, reject it with an error body indicating that particular GUID has expired. Document this in README.
+14) When a RUD is made against a GUID that has expired, reject it with an error body indicating that particular GUID has expired. Document this in README.
 15) Document branching methodology in README.
 16) Describe file structure in README
 17) Be sure to list all additional assumptions. Try to have some discussion. In README.
@@ -25,8 +20,16 @@ LOW BAR COMPLETE
 	b) PUT
 	c) POST
 	d) DELETE
+7) Create logic for GET
+8) Create logic for handling POST
+10) Create logic for handling DELETE
+11) Create persistent backend local database. MongoDB.
 
 VALIDATIONS
+
+7) Validate that expiration time is before now()
+
+VALIDATIONS COMPLETE
 
 1) Check that timestamps passed in are in UNIX time
 2) If no timestamp is given, generate one that is 30 days out from the time of GUID creation. We should only need to do this on a POST.

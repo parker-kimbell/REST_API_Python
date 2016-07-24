@@ -3,12 +3,13 @@ import tornado.ioloop
 import os.path
 
 from endpoints.helpPage import helpPage as EndpointDocumentationHandler
-from endpoints.guid import guidRequestHandler
+from endpoints.guid import GuidRequestHandler
 
 def create_app():
 	return tornado.web.Application([
 		(r"/", EndpointDocumentationHandler),
-		(r"/guid/(.*)", guidRequestHandler)
+		(r"/guid", GuidRequestHandler),
+		(r"/guid/(.*)", GuidRequestHandler)
 	],
 	static_path=os.path.join(os.path.dirname(__file__), "static"),
 	debug=True
