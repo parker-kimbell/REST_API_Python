@@ -5,6 +5,7 @@ from pymongo import MongoClient
 import json
 import time
 from tornado.escape import json_decode, json_encode
+import redis
 
 guid_route = 'guid/'
 valid_guid = "9094E4C980C74043A4B586B420E69DDF"
@@ -136,6 +137,9 @@ class TestguidEndpointPOST(AsyncHTTPTestCase):
 		#TODO: Rename this to clear_db
 		guid_object = guid_collection.remove({"user" : test_user})
 		client.close()
+		# This connection is not closed explicitly as Redis manages this itself
+		cache = redis.StrictRedis(host="localhost", port=6379, db=0)
+		cache.flushdb()
 
 	def test_POST_no_guid_name_valid_expire_valid(self):
 		post_body = {

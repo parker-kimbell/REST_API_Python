@@ -1,6 +1,7 @@
 import tornado.web
 import re
 import os
+import sys
 import binascii
 from calendar import timegm
 from pymongo import MongoClient
@@ -9,6 +10,8 @@ import datetime
 import redis
 
 malformed_guid = """Given GUID is malformed. GUIDs must be 32 character hexadecimal strings with all uppercase letters."""
+# Intializing my Redis connection here because this is currently the only file that uses it. When that changes TODO: Refactor
+# This connection is not closed explicitly as Redis manages this itself
 cache = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 class GuidRequestHandler(tornado.web.RequestHandler):
@@ -42,19 +45,13 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			if (client_guid and self.guidExpirationIsValid(expiration) and self.guidIsValid(client_guid)): # Case: We are either updating a GUID or creating one that is user-specified
 				client = MongoClient('localhost', 27017)
 				guid_collection = client.cylance_challenge_db.guids
-				existing_guid = guid_collection.find_one({"guid" : client_guid})
-				print('after find_one')
+				existing_guid = retrieveFromCacheOrDB(guid_collection, client_guid)
 				if (existing_guid): # Case: We are updating an existing guid
 					updated_guid = {
 						"expire" : body["expire"] if "expire" in body else existing_guid['expire'],
 						"user" : body["user"] if "user" in body else existing_guid["user"]
 					}
-					guid_collection.update({"guid" : client_guid}, {
-						"$set" : updated_guid
-					})
-					# Add the existing guid property into the JSON object we're about to return as this is part of the spec
-					updated_guid["guid"] = existing_guid["guid"]
-					cache.set(updated_guid['guid'], updated_guid)
+					updated_guid = updateGuid(guid_collection, updated_guid, existing_guid)
 					self.set_status(200)
 					self.write(json_encode(updated_guid))
 					client.close()
@@ -64,26 +61,20 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 						"guid" : client_guid,
 						"user" : body["user"]
 					}
-					guid_collection.insert(new_guid)
-					# Remove the Mongo ID that was inserted after our insert because it is not part of the spec
-					del new_guid['_id']
+					new_guid = insertGuid(guid_collection, new_guid)
 					self.set_status(201)
 					self.write(json_encode(new_guid))
 					client.close()
 			elif (not client_guid and self.guidCreationIsValid(expiration, body["user"])): # Case: We are creating a new GUID and need to generate one on the server
 				client = MongoClient('localhost', 27017)
 				guid_collection = client.cylance_challenge_db.guids
-				guid = self.createRandom32CharHexString()
+				generated_guid = self.createRandom32CharHexString()
 				new_guid = {
 					"expire" : expiration,
-					"guid" : guid,
+					"guid" : generated_guid,
 					"user" : body["user"]
 				}
-				# TODO catch this error case
-				guid_collection.insert(new_guid)
-				# Remove the Mongo ID that was inserted after our insert because it is not part of the spec
-				del new_guid['_id']
-				cache.set(new_guid['guid'], new_guid)
+				new_guid = insertGuid(guid_collection, new_guid)
 				self.set_status(201)
 				self.write(json_encode(new_guid))
 				client.close();
@@ -91,17 +82,18 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 				self.set_status(400, "Your request is malformed")
 				self.finish()
 				
-		except:
+		except: #TODO: Catch JSON conversion error here
 			self.set_status(400, "Malformed JSON")
+			print("Unexpected error:", sys.exc_info()[0])
+			raise
 			self.finish()
 
 	def delete(self, client_guid=None):
 		if (self.guidIsValid(client_guid)):
 			client = MongoClient('localhost', 27017)
 			guid_collection = client.cylance_challenge_db.guids
-			guid_collection.remove({"guid" : client_guid})
+			deleteGuid(guid_collection, client_guid)
 			self.set_status(200)
-			cache.delete(client_guid)
 		else:
 			self.set_status(400, malformed_guid)
 		self.finish()
@@ -150,3 +142,34 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 		# This string is then decoded into a utf-8 string since that's what we're using throughout the rest of the project,
 		# and finally all lower case letters are converted to uppercase.
 		return binascii.b2a_hex(os.urandom(16)).decode("utf-8").upper()
+
+def retrieveFromCacheOrDB(guid_collection, client_guid):
+	print('from cache or db')
+	cached_guid = cache.get(client_guid)
+	if (cached_guid):
+		print('returning cached_guid')
+		print(cached_guid)
+		return json_decode(cached_guid.decode('utf-8').replace("'", '"'))
+	else:
+		print('returning from collection')
+		return guid_collection.find_one({"guid" : client_guid})
+
+def updateGuid(guid_collection, updated_guid, existing_guid):
+	guid_collection.update({"guid" : existing_guid["guid"]}, {
+		"$set" : updated_guid
+	})
+	# Add the existing guid property into the JSON object we're about to return as this is part of the spec
+	updated_guid["guid"] = existing_guid["guid"]
+	cache.set(updated_guid["guid"], updated_guid)
+	return updated_guid
+
+def insertGuid(guid_collection, new_guid):
+	guid_collection.insert(new_guid)
+	# Remove the Mongo ID that was inserted after our insert because it is not part of the spec
+	del new_guid["_id"]
+	cache.set(new_guid["guid"], new_guid)
+	return new_guid
+
+def deleteGuid(guid_collection, client_guid):
+	guid_collection.remove({"guid" : client_guid})
+	cache.delete(client_guid)
