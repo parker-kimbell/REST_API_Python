@@ -12,6 +12,7 @@ Low Bar
 17) Be sure to list all additional assumptions. Try to have some discussion. In README.
 18) Comments!!!
 19) Add error response on a bad get
+20) Validate if I need tornado testing package, or pytest
 
 LOW BAR COMPLETE
 1) Create basic web server
@@ -28,6 +29,7 @@ LOW BAR COMPLETE
 VALIDATIONS
 
 7) Validate that expiration time is before now()
+8) POSTs that have no user property should be rejected outright
 
 VALIDATIONS COMPLETE
 
