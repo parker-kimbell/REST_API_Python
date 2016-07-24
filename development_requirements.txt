@@ -1,0 +1,2 @@
+# Used to automatically run tests https://pypi.python.org/pypi/sniffer/0.3.5
+sniffer==0.3.5

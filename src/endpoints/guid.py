@@ -5,10 +5,11 @@ import binascii
 from calendar import timegm
 from pymongo import MongoClient
 from tornado.escape import json_decode, json_encode
-import datetime 
-
+import datetime
+import redis
 
 malformed_guid = """Given GUID is malformed. GUIDs must be 32 character hexadecimal strings with all uppercase letters."""
+cache = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 class GuidRequestHandler(tornado.web.RequestHandler):
 	def set_default_headers(self):
@@ -24,6 +25,7 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 				# Remove the native _id that Mongo inserts into collections
 				del guid_object['_id']
 				self.set_status(200)
+				cache.set(guid_object['guid'], guid_object)
 				self.write(json_encode(guid_object))
 			else:
 				self.set_status(404)
@@ -52,6 +54,7 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 					})
 					# Add the existing guid property into the JSON object we're about to return as this is part of the spec
 					updated_guid["guid"] = existing_guid["guid"]
+					cache.set(updated_guid['guid'], updated_guid)
 					self.set_status(200)
 					self.write(json_encode(updated_guid))
 					client.close()
@@ -80,6 +83,7 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 				guid_collection.insert(new_guid)
 				# Remove the Mongo ID that was inserted after our insert because it is not part of the spec
 				del new_guid['_id']
+				cache.set(new_guid['guid'], new_guid)
 				self.set_status(201)
 				self.write(json_encode(new_guid))
 				client.close();
@@ -96,7 +100,8 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			client = MongoClient('localhost', 27017)
 			guid_collection = client.cylance_challenge_db.guids
 			guid_collection.remove({"guid" : client_guid})
-			self.set_status(200, malformed_guid)
+			self.set_status(200)
+			cache.delete(client_guid)
 		else:
 			self.set_status(400, malformed_guid)
 		self.finish()
