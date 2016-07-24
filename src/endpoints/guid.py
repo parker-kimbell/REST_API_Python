@@ -35,12 +35,9 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 	def get(self, client_guid=None):
 		if(client_guid and self.guidIsValid(client_guid)):
 			# TODO Need to retrieve from DB here
-			guid_object = self.guid_collection.find_one({"guid" : client_guid})
+			guid_object = retrieveFromCacheOrDB(self.guid_collection, client_guid)
 			if (guid_object):
-				# Remove the native _id that Mongo inserts into collections
-				del guid_object['_id']
 				self.set_status(200)
-				cache.set(guid_object['guid'], guid_object)
 				self.write(json_encode(guid_object))
 			else:
 				self.set_status(404)
@@ -84,8 +81,7 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 				self.write(json_encode(new_guid))
 			else: # Case: Something did not pass validation. TODO: Give specific error messages to what is missing in the API
 				self.set_status(400, "Your request is malformed")
-				self.finish()
-				
+			self.finish()		
 		except: #TODO: Catch JSON conversion error here
 			self.set_status(400, "Malformed JSON")
 			print("Unexpected error:", sys.exc_info()[0])
@@ -146,15 +142,19 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 		return binascii.b2a_hex(os.urandom(16)).decode("utf-8").upper()
 
 def retrieveFromCacheOrDB(guid_collection, client_guid):
-	print('from cache or db')
 	cached_guid = cache.get(client_guid)
-	if (cached_guid):
-		print('returning cached_guid')
-		print(cached_guid)
+	if (cached_guid): # Case: We have found an instance of this guid in this cache so we will decode and return it
 		return json_decode(cached_guid.decode('utf-8').replace("'", '"'))
-	else:
-		print('returning from collection')
-		return guid_collection.find_one({"guid" : client_guid})
+	else: # Case: There is no cached version of this guid, so we need to determine if the guid exists in the database or not
+		found_guid = guid_collection.find_one({"guid" : client_guid})
+		if (found_guid): # Case: The guid exists in the database, so we clean it and cache it before returning it
+			# Remove the native _id that Mongo inserts into collections as it cannot be serialized
+			del found_guid['_id']
+			cache.set(found_guid['guid'], found_guid)
+			return found_guid
+		else: # Case: The guid does not exist
+			return None
+		
 
 def updateGuid(guid_collection, updated_guid, existing_guid):
 	guid_collection.update({"guid" : existing_guid["guid"]}, {
@@ -175,3 +175,6 @@ def insertGuid(guid_collection, new_guid):
 def deleteGuid(guid_collection, client_guid):
 	guid_collection.remove({"guid" : client_guid})
 	cache.delete(client_guid)
+	
+	
+	
