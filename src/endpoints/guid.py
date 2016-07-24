@@ -48,35 +48,22 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 	def post(self, client_guid=None):
 		try:
 			body = json_decode(self.request.body)
+			self.body = json_decode(self.request.body)
 			expiration = body["expire"] if "expire" in body else self.createTimestampPlus30Days()
 
 			if (client_guid and self.guidExpirationIsValid(expiration) and self.guidIsValid(client_guid)): # Case: We are either updating a GUID or creating one that is user-specified
 				existing_guid = retrieveFromCacheOrDB(self.guid_collection, client_guid)
 				if (existing_guid): # Case: We are updating an existing guid
-					updated_guid = {
-						"expire" : body["expire"] if "expire" in body else existing_guid['expire'],
-						"user" : body["user"] if "user" in body else existing_guid["user"]
-					}
-					updated_guid = updateGuid(self.guid_collection, updated_guid, existing_guid)
+					updated_guid = updateGuid(self.guid_collection, self.buildUpdatedGuid(existing_guid), existing_guid)
 					self.set_status(200)
 					self.write(json_encode(updated_guid))
 				else: # Case: This guid has not been created yet
-					new_guid = {
-						"expire" : expiration,
-						"guid" : client_guid,
-						"user" : body["user"]
-					}
-					new_guid = insertGuid(self.guid_collection, new_guid)
+					new_guid = insertGuid(self.guid_collection, self.buildNewGuid(client_guid, expiration))
 					self.set_status(201)
 					self.write(json_encode(new_guid))
 			elif (not client_guid and self.guidCreationIsValid(expiration, body["user"])): # Case: We are creating a new GUID and need to generate one on the server
 				generated_guid = self.createRandom32CharHexString()
-				new_guid = {
-					"expire" : expiration,
-					"guid" : generated_guid,
-					"user" : body["user"]
-				}
-				new_guid = insertGuid(self.guid_collection, new_guid)
+				new_guid = insertGuid(self.guid_collection, self.buildNewGuid(generated_guid, expiration))
 				self.set_status(201)
 				self.write(json_encode(new_guid))
 			else: # Case: Something did not pass validation. TODO: Give specific error messages to what is missing in the API
@@ -96,7 +83,25 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			self.set_status(400, malformed_guid)
 		self.finish()
 
-	# This function will return a Unix timestamp representing the time 30 days after it was called
+	# This function builds a dictionary containing expire and user properties.
+	# At this point we have determined that expire and user have valid values if present
+	# so we can safely assign them if the request has sent them along. If the request has not sent them
+	# along we set them to be their existing values so we can easily send this object in the response
+	# in accordance with the spec
+	def buildUpdatedGuid(self, existing_guid):
+		return {
+			"expire" : self.body["expire"] if "expire" in self.body else existing_guid['expire'],
+			"user" : self.body["user"] if "user" in self.body else existing_guid["user"]
+		}
+
+	def buildNewGuid(self, guid, expiration):
+		return {
+			"expire" : expiration,
+			"guid" : guid,
+			"user" : self.body["user"]
+		}
+
+	# Returns a Unix timestamp representing the time 30 days after it was called
 	def createTimestampPlus30Days(self):
 		print ('creating time stamp on server')
 		thirtyDaysInTheFuture = datetime.datetime.utcnow() + datetime.timedelta(days=30)
