@@ -15,15 +15,27 @@ malformed_guid = """Given GUID is malformed. GUIDs must be 32 character hexadeci
 cache = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 class GuidRequestHandler(tornado.web.RequestHandler):
+	# Called at the beginning of a request
+	def initialize(self):
+		# We are just preparing our names here. Mongo lazily loads all connections, so until
+		# we actually try to do some CRUD it won't initialize the connection
+		self.client = MongoClient('localhost', 27017)
+		self.guid_collection = self.client.cylance_challenge_db.guids
+
+	# Called at the beginning of a request
 	def set_default_headers(self):
 		self.set_header('Content-Type', 'application/json')
+
+	# Called at the end of a request
+	def on_finish(self):
+		# From http://api.mongodb.com/python/current/api/pymongo/mongo_client.html#pymongo.mongo_client.MongoClient.close
+		# If this instance is used again it will be automatically re-opened and the threads restarted.
+		self.client.close()
+
 	def get(self, client_guid=None):
 		if(client_guid and self.guidIsValid(client_guid)):
 			# TODO Need to retrieve from DB here
-			client = MongoClient('localhost', 27017)
-			db = client.cylance_challenge_db
-			guid_collection = db.guids
-			guid_object = guid_collection.find_one({"guid" : client_guid})
+			guid_object = self.guid_collection.find_one({"guid" : client_guid})
 			if (guid_object):
 				# Remove the native _id that Mongo inserts into collections
 				del guid_object['_id']
@@ -32,7 +44,6 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 				self.write(json_encode(guid_object))
 			else:
 				self.set_status(404)
-			client.close()
 		else:
 			self.set_status(400, malformed_guid)
 		self.finish()
@@ -43,41 +54,34 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			expiration = body["expire"] if "expire" in body else self.createTimestampPlus30Days()
 
 			if (client_guid and self.guidExpirationIsValid(expiration) and self.guidIsValid(client_guid)): # Case: We are either updating a GUID or creating one that is user-specified
-				client = MongoClient('localhost', 27017)
-				guid_collection = client.cylance_challenge_db.guids
-				existing_guid = retrieveFromCacheOrDB(guid_collection, client_guid)
+				existing_guid = retrieveFromCacheOrDB(self.guid_collection, client_guid)
 				if (existing_guid): # Case: We are updating an existing guid
 					updated_guid = {
 						"expire" : body["expire"] if "expire" in body else existing_guid['expire'],
 						"user" : body["user"] if "user" in body else existing_guid["user"]
 					}
-					updated_guid = updateGuid(guid_collection, updated_guid, existing_guid)
+					updated_guid = updateGuid(self.guid_collection, updated_guid, existing_guid)
 					self.set_status(200)
 					self.write(json_encode(updated_guid))
-					client.close()
 				else: # Case: This guid has not been created yet
 					new_guid = {
 						"expire" : expiration,
 						"guid" : client_guid,
 						"user" : body["user"]
 					}
-					new_guid = insertGuid(guid_collection, new_guid)
+					new_guid = insertGuid(self.guid_collection, new_guid)
 					self.set_status(201)
 					self.write(json_encode(new_guid))
-					client.close()
 			elif (not client_guid and self.guidCreationIsValid(expiration, body["user"])): # Case: We are creating a new GUID and need to generate one on the server
-				client = MongoClient('localhost', 27017)
-				guid_collection = client.cylance_challenge_db.guids
 				generated_guid = self.createRandom32CharHexString()
 				new_guid = {
 					"expire" : expiration,
 					"guid" : generated_guid,
 					"user" : body["user"]
 				}
-				new_guid = insertGuid(guid_collection, new_guid)
+				new_guid = insertGuid(self.guid_collection, new_guid)
 				self.set_status(201)
 				self.write(json_encode(new_guid))
-				client.close();
 			else: # Case: Something did not pass validation. TODO: Give specific error messages to what is missing in the API
 				self.set_status(400, "Your request is malformed")
 				self.finish()
@@ -90,9 +94,7 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 
 	def delete(self, client_guid=None):
 		if (self.guidIsValid(client_guid)):
-			client = MongoClient('localhost', 27017)
-			guid_collection = client.cylance_challenge_db.guids
-			deleteGuid(guid_collection, client_guid)
+			deleteGuid(self.guid_collection, client_guid)
 			self.set_status(200)
 		else:
 			self.set_status(400, malformed_guid)
