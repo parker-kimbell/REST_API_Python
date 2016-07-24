@@ -1,4 +1,4 @@
-from endpoints.guid import GuidRequestHandler
+from endpoints.guid import GuidRequestHandler, expirationIsValid
 from tornado.testing import AsyncHTTPTestCase
 import guid_server
 from pymongo import MongoClient
@@ -6,6 +6,11 @@ import json
 import time
 from tornado.escape import json_decode, json_encode
 import redis
+
+#TODO: Create common string constant file
+USER_INVALID = "User property must be present and non-blank in a POST request"
+TIMESTAMP_INVALID = "Expire property must be valid UNIX timestamp"
+GUID_INVALID = "Given GUID is malformed. GUIDs must be 32 character hexadecimal strings with all uppercase letters."
 
 guid_route = 'guid/'
 valid_guid = "9094E4C980C74043A4B586B420E69DDF"
@@ -15,7 +20,7 @@ invalid_guid_non_hex = "9094_4C980C74043A4B586B420E69DDF"
 invalid_guid_lower_case = "9094e4C980C74043A4B586B420E69DDF"
 inserted_guid = "1014E4C980C74043A4B586B420E69DDF"
 
-class TestGUIDEndpoint(AsyncHTTPTestCase):
+class TestGuidEndpointGet(AsyncHTTPTestCase):
 	def get_app(self):
 		return guid_server.create_app()
 
@@ -70,15 +75,15 @@ invalid_timestamp_number_too_large = 9999999999999999999999999999
 
 class TestTimeStampValidator():
 	def test_invalid_stamp_is_rejected_letter(self):
-		assert False == GuidRequestHandler.guidExpirationIsValid(self, invalid_timestamp_letter)
+		assert False == expirationIsValid(invalid_timestamp_letter)
 	def test_invalid_stamp_is_rejected_too_large(self):
-		assert False == GuidRequestHandler.guidExpirationIsValid(self, invalid_timestamp_number_too_large)
+		assert False == expirationIsValid(invalid_timestamp_number_too_large)
 	def test_valid_stamp_is_accepted(self):
-		assert True == GuidRequestHandler.guidExpirationIsValid(self, valid_timestamp)
+		assert True == expirationIsValid(valid_timestamp)
 	def test_valid_stamp_is_accepted_as_number(self):
-		assert True == GuidRequestHandler.guidExpirationIsValid(self, 1294111525)
+		assert True == expirationIsValid(valid_timestamp_as_number)
 
-class TestguidEndpointDELETE(AsyncHTTPTestCase):
+class TestGuidEndpointDELETE(AsyncHTTPTestCase):
 	def get_app(self):
 		return guid_server.create_app()
 
@@ -126,7 +131,7 @@ class TestguidEndpointDELETE(AsyncHTTPTestCase):
 		self.assertEqual(response.code, 200)
 		assert not guid_collection.find_one({"guid":inserted_guid})
 
-class TestguidEndpointPOST(AsyncHTTPTestCase):
+class TestGuidEndpointPOST(AsyncHTTPTestCase):
 	def get_app(self):
 		return guid_server.create_app()
 
@@ -140,6 +145,23 @@ class TestguidEndpointPOST(AsyncHTTPTestCase):
 		# This connection is not closed explicitly as Redis manages this itself
 		cache = redis.StrictRedis(host="localhost", port=6379, db=0)
 		cache.flushdb()
+
+	def test_POST_no_user(self):
+		post_body = {
+			"expire" : valid_timestamp,
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, USER_INVALID)
+
+	def test_POST_user_blank(self):
+		post_body = {
+			"expire" : valid_timestamp,
+			"user" : ""
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, USER_INVALID)
 
 	def test_POST_no_guid_name_valid_expire_valid(self):
 		post_body = {
@@ -181,6 +203,7 @@ class TestguidEndpointPOST(AsyncHTTPTestCase):
 		}
 		response = self.fetch('/' + guid_route + invalid_guid_lower_case, method="POST", body=json.dumps(post_body))
 		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, GUID_INVALID)
 
 	def test_POST_valid_guid_valid_name_valid_expire_insert_new(self):
 		post_body = {
@@ -249,8 +272,9 @@ class TestguidEndpointPOST(AsyncHTTPTestCase):
 
 	def test_POST_invalid_expire(self):
 		post_body = {
-			"user" : test_user,
-			"expire" : invalid_timestamp_letter
+			"expire" : invalid_timestamp_letter,
+			"user" : test_user
 		}
-		response = self.fetch('/' + guid_route + valid_guid, method="POST", body=json.dumps(post_body))
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
 		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, TIMESTAMP_INVALID)
