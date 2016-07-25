@@ -1,4 +1,4 @@
-from tornado.escape import json_decode, json_encode
+from tornado.escape import json_decode
 
 def readGuid(guid_collection, client_guid, cache):
 	cached_guid = cache.get(client_guid) 
