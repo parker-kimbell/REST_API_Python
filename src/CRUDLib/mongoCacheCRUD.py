@@ -34,6 +34,7 @@ def insertGuid(guid_collection, new_guid, cache):
 	cache.set(new_guid["guid"], new_guid)
 	return new_guid
 
+@gen.coroutine
 def deleteGuid(guid_collection, client_guid, cache):
-	guid_collection.remove({"guid" : client_guid})
+	yield guid_collection.remove({"guid" : client_guid})
 	cache.delete(client_guid)

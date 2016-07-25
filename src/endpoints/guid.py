@@ -59,17 +59,28 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			self.validated_guid = validator.validateGuid(client_guid)
 
 			if (client_guid): # Case: We are either updating a GUID or creating one that is user-specified
-				existing_guid = yield crud.readGuid(self.guid_collection, self.validated_guid, self.cache)
+				existing_guid = yield crud.readGuid(
+					self.guid_collection, 
+					self.validated_guid, 
+					self.cache)
 				if (existing_guid): # Case: We are updating an existing guid
-					updated_guid = yield crud.updateGuid(self.guid_collection, self.buildUpdatedGuid(existing_guid), existing_guid, self.cache)
+					updated_guid = yield crud.updateGuid(
+						self.guid_collection, 
+						self.buildUpdatedGuid(existing_guid), 
+						existing_guid, self.cache)
 					self.set_status(200)
 					self.write(json_encode(updated_guid))
 				else: # Case: This guid has not been created yet
-					new_guid = yield crud.insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid), self.cache)
+					new_guid = yield crud.insertGuid(
+						self.guid_collection, 
+						self.buildNewGuid(self.validated_guid), 
+						self.cache)
 					self.set_status(201)
 					self.write(json_encode(new_guid))
 			else: # Case: We are creating a new GUID and need to generate one on the server. The client has not sent a GUID.
-				new_guid = yield crud.insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid), self.cache)
+				new_guid = yield crud.insertGuid(self.guid_collection, 
+					self.buildNewGuid(self.validated_guid), 
+					self.cache)
 				self.set_status(201)
 				self.write(json_encode(new_guid))
 			self.finish()
@@ -83,13 +94,17 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			print("Unexpected error:", sys.exc_info()[0])
 			raise
 
+	@gen.coroutine
 	def delete(self, client_guid=None):
 		try:
 			# Raises exception on detecting invalid guid
 			validator.validateGuid(client_guid)
 
 			if (client_guid):
-				crud.deleteGuid(self.guid_collection, client_guid, self.cache)
+				yield crud.deleteGuid(
+					self.guid_collection, 
+					client_guid, 
+					self.cache)
 				self.set_status(200)
 			else: # Case: User tried to DELETE without sending a guid
 				self.set_status(400, constants.DELETE_INVALID)

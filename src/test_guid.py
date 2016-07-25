@@ -89,61 +89,61 @@ class TestTimeStampValidator():
 	def test_valid_stamp_is_accepted_as_number(self):
 		assert True == validator.expirationIsValid(valid_timestamp_as_number)
 
-# class TestGuidEndpointDELETE(AsyncHTTPTestCase):
-# 	def get_app(self):
-# 		return guid_server.create_test_app()
+class TestGuidEndpointDELETE(AsyncHTTPTestCase):
+	def get_app(self):
+		return guid_server.create_test_app()
 
-# 	def tearDown(self):
-# 		client = MongoClient(constants.MONGO_URL, 27017)
-# 		db = client.cylance_challenge_db
-# 		guid_collection = db[constants.TEST_COLLECTION]
-# 		#TODO: Rename this to clear_db
-# 		guid_object = guid_collection.remove({"user" : test_user})
-# 		client.close()
-# 		# This connection is not closed explicitly as Redis manages this itself
-# 		cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=constants.TEST_REDIS_DB)
-# 		cache.flushdb()
+	def tearDown(self):
+		client = MongoClient(constants.MONGO_URL, 27017)
+		db = client.cylance_challenge_db
+		guid_collection = db[constants.TEST_COLLECTION]
+		#TODO: Rename this to clear_db
+		guid_object = guid_collection.remove({"user" : test_user})
+		client.close()
+		# This connection is not closed explicitly as Redis manages this itself
+		cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=constants.TEST_REDIS_DB)
+		cache.flushdb()
 
-# 	def test_DELETE_invalid_guid(self):
-# 		#setup
-# 		client = MongoClient(constants.MONGO_URL, 27017)
-# 		db = client.cylance_challenge_db
-# 		guid_collection = db[constants.TEST_COLLECTION]
-# 		#TODO: Rename this to clear_db
-# 		guid_object = guid_collection.insert({
-# 			"guid" : inserted_guid,
-# 			"expire" : inserted_timestamp,
-# 			"user" : inserted_user
-# 		})
-# 		#end_setup
+	def test_DELETE_invalid_guid(self):
+		#setup
+		client = MongoClient(constants.MONGO_URL, 27017)
+		db = client.cylance_challenge_db
+		guid_collection = db[constants.TEST_COLLECTION]
+		#TODO: Rename this to clear_db
+		guid_object = guid_collection.insert({
+			"guid" : inserted_guid,
+			"expire" : inserted_timestamp,
+			"user" : inserted_user
+		})
+		#end_setup
 
-# 		response = self.fetch('/' + guid_route + invalid_guid_lower_case, method="DELETE")
-# 		self.assertEqual(response.code, 400)
-# 		assert guid_collection.find_one({"guid":inserted_guid})
-# 		client.close()
+		response = self.fetch('/' + guid_route + invalid_guid_lower_case, method="DELETE")
+		self.assertEqual(response.code, 400)
+		assert guid_collection.find_one({"guid":inserted_guid})
+		client.close()
 
-# 	def test_DELETE_valid_guid(self):
-# 		#setup
-# 		client = MongoClient(constants.MONGO_URL, 27017)
-# 		db = client.cylance_challenge_db
-# 		guid_collection = db[constants.TEST_COLLECTION]
-# 		#TODO: Rename this to clear_db
-# 		guid_object = guid_collection.insert({
-# 			"guid" : inserted_guid,
-# 			"expire" : inserted_timestamp,
-# 			"user" : inserted_user
-# 		})
-# 		client.close()
-# 		#end_setup
+	def test_DELETE_valid_guid(self):
+		#setup
+		client = MongoClient(constants.MONGO_URL, 27017)
+		db = client.cylance_challenge_db
+		guid_collection = db[constants.TEST_COLLECTION]
+		#TODO: Rename this to clear_db
+		guid_object = guid_collection.insert({
+			"guid" : inserted_guid,
+			"expire" : inserted_timestamp,
+			"user" : inserted_user
+		})
+		client.close()
+		#end_setup
 
-# 		response = self.fetch('/' + guid_route + inserted_guid, method="DELETE")
-# 		self.assertEqual(response.code, 200)
-# 		assert not guid_collection.find_one({"guid":inserted_guid})
+		response = self.fetch('/' + guid_route + inserted_guid, method="DELETE")
+		self.assertEqual(response.code, 200)
+		assert not guid_collection.find_one({"guid":inserted_guid})
 
-# 	def test_DELETE_no_guid(self):
-# 		response = self.fetch('/' + guid_route, method="DELETE")
-# 		self.assertEqual(response.code, 400)
-# 		self.assertEqual(response.reason, constants.DELETE_INVALID)
+	def test_DELETE_no_guid(self):
+		response = self.fetch('/' + guid_route, method="DELETE")
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, constants.DELETE_INVALID)
 
 class TestGuidEndpointPOST(AsyncHTTPTestCase):
 	def get_app(self):
