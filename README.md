@@ -54,4 +54,11 @@ Thanks!
 9) Factor out magic numbers (specifically connection ports)
 10) Create actual configuration file (refactor constants file)
 11) Currently I'm accepting anything on the /guid/ endpoint and then validating after the request is received. Need to improve this regex.
+12) Reduce entropy of style.
 
+## Validations
+1) On a POST, the "user" field must be present and non-blank.
+2) GUIDs from the user must always conform to the length and content requirements of the spec.
+3) DELETE and GET requests must have a GUID present in the URL.
+4) Expire values sent along must be valid Unix timestamps.
+5) The body of a POST must be valid JSON.
