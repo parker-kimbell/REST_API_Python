@@ -1,7 +1,10 @@
 from tornado.escape import json_decode
 from tornado import gen
+import asyncio
+import aioredis
 
 @gen.coroutine
+@asyncio.coroutine
 def readGuid(guid_collection, client_guid, cache):
 	cached_guid = cache.get(client_guid) 
 	if (cached_guid): # Case: We have found an instance of this guid in this cache so we will decode and return it

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tornado.web
 from motor import MotorClient
 from tornado.escape import json_decode, json_encode
