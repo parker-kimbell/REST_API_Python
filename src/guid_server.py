@@ -3,12 +3,10 @@ import tornado.ioloop
 import os.path
 
 import constants.constants as constants
-from endpoints.helpPage import helpPage as EndpointDocumentationHandler
 from endpoints.guid import GuidRequestHandler
 
 def create_app(conf):
 	return tornado.web.Application([
-		(r"/", EndpointDocumentationHandler),
 		(r"/guid", GuidRequestHandler, conf),
 		(r"/guid/(.*)", GuidRequestHandler, conf)
 	],
