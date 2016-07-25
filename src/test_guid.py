@@ -1,4 +1,5 @@
-from endpoints.guid import GuidRequestHandler, expirationIsValid
+from endpoints.guid import GuidRequestHandler
+import constants.constants as constants
 from tornado.testing import AsyncHTTPTestCase
 import guid_server
 from pymongo import MongoClient
@@ -6,14 +7,9 @@ import json
 import time
 from tornado.escape import json_decode, json_encode
 import redis
+import validators.guidValidator as validator
 
-#TODO: Create common string constant file
-DELETE_INVALID = "DELETE requests require a GUID in the request URL"
-GET_INVALID = "GET requests require a GUID in the request URL"
-USER_INVALID = "User property must be present and non-blank in a POST request"
-TIMESTAMP_INVALID = "Expire property must be valid UNIX timestamp"
-GUID_INVALID = "Given GUID is malformed. GUIDs must be 32 character hexadecimal strings with all uppercase letters."
-
+#TODO: Move these to a test data file
 guid_route = 'guid/'
 valid_guid = "9094E4C980C74043A4B586B420E69DDF"
 invalid_guid_too_short = "9094E4C980C74043A4B586B420E69DD"
@@ -24,20 +20,23 @@ inserted_guid = "1014E4C980C74043A4B586B420E69DDF"
 
 class TestGuidEndpointGet(AsyncHTTPTestCase):
 	def get_app(self):
-		return guid_server.create_app()
+		return guid_server.create_test_app()
 
 	def tearDown(self):
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		guid_collection.remove({"guid" : inserted_guid})
 		client.close()
+		# This connection is not closed explicitly as Redis manages this itself
+		cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=constants.TEST_REDIS_DB)
+		cache.flushdb()
 
 	def test_response_to_found_guid(self):
 		# setup
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		guid_object = guid_collection.insert({"guid" : inserted_guid})
 		client.close()
 		# end setup
@@ -70,7 +69,7 @@ class TestGuidEndpointGet(AsyncHTTPTestCase):
 	def test_GET_no_guid(self):
 		response = self.fetch('/' + guid_route, method="GET")
 		self.assertEqual(response.code, 400)
-		self.assertEqual(response.reason, GET_INVALID)
+		self.assertEqual(response.reason, constants.GET_INVALID)
 
 test_user = "test_user"
 inserted_user = "inserted_user"
@@ -82,31 +81,34 @@ invalid_timestamp_number_too_large = 9999999999999999999999999999
 
 class TestTimeStampValidator():
 	def test_invalid_stamp_is_rejected_letter(self):
-		assert False == expirationIsValid(invalid_timestamp_letter)
+		assert False == validator.expirationIsValid(invalid_timestamp_letter)
 	def test_invalid_stamp_is_rejected_too_large(self):
-		assert False == expirationIsValid(invalid_timestamp_number_too_large)
+		assert False == validator.expirationIsValid(invalid_timestamp_number_too_large)
 	def test_valid_stamp_is_accepted(self):
-		assert True == expirationIsValid(valid_timestamp)
+		assert True == validator.expirationIsValid(valid_timestamp)
 	def test_valid_stamp_is_accepted_as_number(self):
-		assert True == expirationIsValid(valid_timestamp_as_number)
+		assert True == validator.expirationIsValid(valid_timestamp_as_number)
 
 class TestGuidEndpointDELETE(AsyncHTTPTestCase):
 	def get_app(self):
-		return guid_server.create_app()
+		return guid_server.create_test_app()
 
 	def tearDown(self):
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		#TODO: Rename this to clear_db
 		guid_object = guid_collection.remove({"user" : test_user})
 		client.close()
+		# This connection is not closed explicitly as Redis manages this itself
+		cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=constants.TEST_REDIS_DB)
+		cache.flushdb()
 
 	def test_DELETE_invalid_guid(self):
 		#setup
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		#TODO: Rename this to clear_db
 		guid_object = guid_collection.insert({
 			"guid" : inserted_guid,
@@ -122,9 +124,9 @@ class TestGuidEndpointDELETE(AsyncHTTPTestCase):
 
 	def test_DELETE_valid_guid(self):
 		#setup
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		#TODO: Rename this to clear_db
 		guid_object = guid_collection.insert({
 			"guid" : inserted_guid,
@@ -141,21 +143,21 @@ class TestGuidEndpointDELETE(AsyncHTTPTestCase):
 	def test_DELETE_no_guid(self):
 		response = self.fetch('/' + guid_route, method="DELETE")
 		self.assertEqual(response.code, 400)
-		self.assertEqual(response.reason, DELETE_INVALID)
+		self.assertEqual(response.reason, constants.DELETE_INVALID)
 
 class TestGuidEndpointPOST(AsyncHTTPTestCase):
 	def get_app(self):
-		return guid_server.create_app()
+		return guid_server.create_test_app()
 
 	def tearDown(self):
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		#TODO: Rename this to clear_db
 		guid_object = guid_collection.remove({"user" : test_user})
 		client.close()
 		# This connection is not closed explicitly as Redis manages this itself
-		cache = redis.StrictRedis(host="localhost", port=6379, db=0)
+		cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=constants.TEST_REDIS_DB)
 		cache.flushdb()
 
 	def test_POST_no_user(self):
@@ -164,7 +166,7 @@ class TestGuidEndpointPOST(AsyncHTTPTestCase):
 		}
 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
 		self.assertEqual(response.code, 400)
-		self.assertEqual(response.reason, USER_INVALID)
+		self.assertEqual(response.reason, constants.USER_INVALID)
 
 	def test_POST_user_blank(self):
 		post_body = {
@@ -173,7 +175,7 @@ class TestGuidEndpointPOST(AsyncHTTPTestCase):
 		}
 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
 		self.assertEqual(response.code, 400)
-		self.assertEqual(response.reason, USER_INVALID)
+		self.assertEqual(response.reason, constants.USER_INVALID)
 
 	def test_POST_no_guid_name_valid_expire_valid(self):
 		post_body = {
@@ -215,7 +217,7 @@ class TestGuidEndpointPOST(AsyncHTTPTestCase):
 		}
 		response = self.fetch('/' + guid_route + invalid_guid_lower_case, method="POST", body=json.dumps(post_body))
 		self.assertEqual(response.code, 400)
-		self.assertEqual(response.reason, GUID_INVALID)
+		self.assertEqual(response.reason, constants.GUID_INVALID)
 
 	def test_POST_valid_guid_valid_name_valid_expire_insert_new(self):
 		post_body = {
@@ -231,9 +233,9 @@ class TestGuidEndpointPOST(AsyncHTTPTestCase):
 
 	def test_POST_valid_guid_valid_name_valid_expire_valid_update_existing(self):
 		#setup
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		#TODO: Rename this to clear_db
 		guid_object = guid_collection.insert({
 			"guid" : inserted_guid,
@@ -258,9 +260,9 @@ class TestGuidEndpointPOST(AsyncHTTPTestCase):
 
 	def test_POST_valid_guid_valid_name_valid_no_expire_update_existing(self):
 		#setup
-		client = MongoClient('localhost', 27017)
+		client = MongoClient(constants.MONGO_URL, 27017)
 		db = client.cylance_challenge_db
-		guid_collection = db.guids
+		guid_collection = db[constants.TEST_COLLECTION]
 		#TODO: Rename this to clear_db
 		guid_object = guid_collection.insert({
 			"guid" : inserted_guid,
@@ -289,4 +291,4 @@ class TestGuidEndpointPOST(AsyncHTTPTestCase):
 		}
 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
 		self.assertEqual(response.code, 400)
-		self.assertEqual(response.reason, TIMESTAMP_INVALID)
+		self.assertEqual(response.reason, constants.TIMESTAMP_INVALID)
