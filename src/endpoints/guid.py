@@ -1,6 +1,7 @@
 import tornado.web
-from pymongo import MongoClient
+from motor import MotorClient
 from tornado.escape import json_decode, json_encode
+from tornado import gen
 import redis
 import constants.constants as constants
 import validators.guidValidator as validator
@@ -9,9 +10,11 @@ import CRUDLib.mongoCacheCRUD as crud
 class GuidRequestHandler(tornado.web.RequestHandler):
 	# Called at the beginning of a request
 	def initialize(self, mongoCollection, redisDB):
+		# From https://motor.readthedocs.io/en/stable/differences.html
+		# Motor’s client classes do no I/O in their constructors; they connect on demand, when you first attempt an operation.
 		# We are just preparing our names here. Mongo lazily loads all connections, so until
 		# we actually try to do some CRUD it won't initialize the connection
-		self.client = MongoClient(constants.MONGO_URL, 27017)
+		self.client = MotorClient(constants.MONGO_URL, 27017)
 		self.guid_collection = self.client.cylance_challenge_db[mongoCollection]
 		# This connection is not closed explicitly as Redis manages this itself
 		self.cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=redisDB)
@@ -22,17 +25,16 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 
 	# Called at the end of a request
 	def on_finish(self):
-		# From http://api.mongodb.com/python/current/api/pymongo/mongo_client.html#pymongo.mongo_client.MongoClient.close
-		# If this instance is used again it will be automatically re-opened and the threads restarted.
 		self.client.close()
 
+	@gen.coroutine
 	def get(self, client_guid=None):
 		try:
 			# Raises exception on detecting invalid guid
 			validator.validateGuid(client_guid)
 
 			if (client_guid):
-				guid_object = crud.readGuid(self.guid_collection, client_guid, self.cache)
+				guid_object = yield crud.readGuid(self.guid_collection, client_guid, self.cache)
 				if (guid_object): # Case: we have found the requested guid
 					self.set_status(200)
 					self.write(json_encode(guid_object))
