@@ -48,6 +48,7 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			self.set_status(400, e.args[0])
 			self.finish()
 
+	@gen.coroutine
 	def post(self, client_guid=None):
 		try:
 			# If all of this validation completes without raising an exception
@@ -58,17 +59,17 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			self.validated_guid = validator.validateGuid(client_guid)
 
 			if (client_guid): # Case: We are either updating a GUID or creating one that is user-specified
-				existing_guid = crud.readGuid(self.guid_collection, self.validated_guid, self.cache)
+				existing_guid = yield crud.readGuid(self.guid_collection, self.validated_guid, self.cache)
 				if (existing_guid): # Case: We are updating an existing guid
-					updated_guid = crud.updateGuid(self.guid_collection, self.buildUpdatedGuid(existing_guid), existing_guid, self.cache)
+					updated_guid = yield crud.updateGuid(self.guid_collection, self.buildUpdatedGuid(existing_guid), existing_guid, self.cache)
 					self.set_status(200)
 					self.write(json_encode(updated_guid))
 				else: # Case: This guid has not been created yet
-					new_guid = crud.insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid), self.cache)
+					new_guid = yield crud.insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid), self.cache)
 					self.set_status(201)
 					self.write(json_encode(new_guid))
 			else: # Case: We are creating a new GUID and need to generate one on the server. The client has not sent a GUID.
-				new_guid = crud.insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid), self.cache)
+				new_guid = yield crud.insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid), self.cache)
 				self.set_status(201)
 				self.write(json_encode(new_guid))
 			self.finish()

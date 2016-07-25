@@ -15,9 +15,10 @@ def readGuid(guid_collection, client_guid, cache):
 			return found_guid
 		else: # Case: The guid does not exist
 			return None
-		
+
+@gen.coroutine		
 def updateGuid(guid_collection, updated_guid, existing_guid, cache):
-	guid_collection.update({"guid" : existing_guid["guid"]}, {
+	yield guid_collection.update({"guid" : existing_guid["guid"]}, {
 		"$set" : updated_guid
 	})
 	# Add the existing guid property into the JSON object we're about to return as this is part of the spec
@@ -25,8 +26,9 @@ def updateGuid(guid_collection, updated_guid, existing_guid, cache):
 	cache.set(updated_guid["guid"], updated_guid)
 	return updated_guid
 
+@gen.coroutine
 def insertGuid(guid_collection, new_guid, cache):
-	guid_collection.insert(new_guid)
+	yield guid_collection.insert(new_guid)
 	# Remove the Mongo ID that was inserted after our insert because it is not part of the spec
 	del new_guid["_id"]
 	cache.set(new_guid["guid"], new_guid)

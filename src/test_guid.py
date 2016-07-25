@@ -145,150 +145,150 @@ class TestTimeStampValidator():
 # 		self.assertEqual(response.code, 400)
 # 		self.assertEqual(response.reason, constants.DELETE_INVALID)
 
-# class TestGuidEndpointPOST(AsyncHTTPTestCase):
-# 	def get_app(self):
-# 		return guid_server.create_test_app()
+class TestGuidEndpointPOST(AsyncHTTPTestCase):
+	def get_app(self):
+		return guid_server.create_test_app()
 
-# 	def tearDown(self):
-# 		client = MongoClient(constants.MONGO_URL, 27017)
-# 		db = client.cylance_challenge_db
-# 		guid_collection = db[constants.TEST_COLLECTION]
-# 		#TODO: Rename this to clear_db
-# 		guid_object = guid_collection.remove({"user" : test_user})
-# 		client.close()
-# 		# This connection is not closed explicitly as Redis manages this itself
-# 		cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=constants.TEST_REDIS_DB)
-# 		cache.flushdb()
+	def tearDown(self):
+		client = MongoClient(constants.MONGO_URL, 27017)
+		db = client.cylance_challenge_db
+		guid_collection = db[constants.TEST_COLLECTION]
+		#TODO: Rename this to clear_db
+		guid_object = guid_collection.remove({"user" : test_user})
+		client.close()
+		# This connection is not closed explicitly as Redis manages this itself
+		cache = redis.StrictRedis(host=constants.REDIS_URL, port=6379, db=constants.TEST_REDIS_DB)
+		cache.flushdb()
 
-# 	def test_POST_no_user(self):
-# 		post_body = {
-# 			"expire" : valid_timestamp,
-# 		}
-# 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 400)
-# 		self.assertEqual(response.reason, constants.USER_INVALID)
+	def test_POST_no_user(self):
+		post_body = {
+			"expire" : valid_timestamp,
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, constants.USER_INVALID)
 
-# 	def test_POST_user_blank(self):
-# 		post_body = {
-# 			"expire" : valid_timestamp,
-# 			"user" : ""
-# 		}
-# 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 400)
-# 		self.assertEqual(response.reason, constants.USER_INVALID)
+	def test_POST_user_blank(self):
+		post_body = {
+			"expire" : valid_timestamp,
+			"user" : ""
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, constants.USER_INVALID)
 
-# 	def test_POST_no_guid_name_valid_expire_valid(self):
-# 		post_body = {
-# 			"expire" : valid_timestamp,
-# 			"user" : test_user
-# 		}
-# 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 201)
-# 		body = json_decode(response.body)
-# 		assert body["user"] == test_user
-# 		assert body["expire"] == valid_timestamp
-# 		assert body["guid"] 
+	def test_POST_no_guid_name_valid_expire_valid(self):
+		post_body = {
+			"expire" : valid_timestamp,
+			"user" : test_user
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 201)
+		body = json_decode(response.body)
+		assert body["user"] == test_user
+		assert body["expire"] == valid_timestamp
+		assert body["guid"] 
 
-# 	def test_POST_no_guid_name_valid_no_expire(self):
-# 		post_body = {
-# 			"user" : test_user
-# 		}
-# 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 201)
-# 		body = json_decode(response.body)
-# 		assert body["user"] == test_user
-# 		assert body["expire"] > time.time()
-# 		assert body["guid"]
+	def test_POST_no_guid_name_valid_no_expire(self):
+		post_body = {
+			"user" : test_user
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 201)
+		body = json_decode(response.body)
+		assert body["user"] == test_user
+		assert body["expire"] > time.time()
+		assert body["guid"]
 
-# 	def test_POST_guid_valid_name_valid_no_expire(self):
-# 		post_body = {
-# 			"user" : test_user
-# 		}
-# 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 201)
-# 		body = json_decode(response.body)
-# 		assert body["user"] == test_user
-# 		assert body["expire"] > time.time()
-# 		assert body["guid"]
+	def test_POST_guid_valid_name_valid_no_expire(self):
+		post_body = {
+			"user" : test_user
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 201)
+		body = json_decode(response.body)
+		assert body["user"] == test_user
+		assert body["expire"] > time.time()
+		assert body["guid"]
 
-# 	def test_POST_invalid_guid(self):
-# 		post_body = {
-# 			"user" : test_user
-# 		}
-# 		response = self.fetch('/' + guid_route + invalid_guid_lower_case, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 400)
-# 		self.assertEqual(response.reason, constants.GUID_INVALID)
+	def test_POST_invalid_guid(self):
+		post_body = {
+			"user" : test_user
+		}
+		response = self.fetch('/' + guid_route + invalid_guid_lower_case, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, constants.GUID_INVALID)
 
-# 	def test_POST_valid_guid_valid_name_valid_expire_insert_new(self):
-# 		post_body = {
-# 			"user" : test_user,
-# 			"expire" : valid_timestamp
-# 		}
-# 		response = self.fetch('/' + guid_route + valid_guid, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 201)
-# 		body = json_decode(response.body)
-# 		assert body["user"] == test_user
-# 		assert body["expire"] == valid_timestamp
-# 		assert body["guid"] == valid_guid
+	def test_POST_valid_guid_valid_name_valid_expire_insert_new(self):
+		post_body = {
+			"user" : test_user,
+			"expire" : valid_timestamp
+		}
+		response = self.fetch('/' + guid_route + valid_guid, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 201)
+		body = json_decode(response.body)
+		assert body["user"] == test_user
+		assert body["expire"] == valid_timestamp
+		assert body["guid"] == valid_guid
 
-# 	def test_POST_valid_guid_valid_name_valid_expire_valid_update_existing(self):
-# 		#setup
-# 		client = MongoClient(constants.MONGO_URL, 27017)
-# 		db = client.cylance_challenge_db
-# 		guid_collection = db[constants.TEST_COLLECTION]
-# 		#TODO: Rename this to clear_db
-# 		guid_object = guid_collection.insert({
-# 			"guid" : inserted_guid,
-# 			"expire" : inserted_timestamp,
-# 			"user" : inserted_user
-# 		})
-# 		client.close()
-# 		#end_setup
+	def test_POST_valid_guid_valid_name_valid_expire_valid_update_existing(self):
+		#setup
+		client = MongoClient(constants.MONGO_URL, 27017)
+		db = client.cylance_challenge_db
+		guid_collection = db[constants.TEST_COLLECTION]
+		#TODO: Rename this to clear_db
+		guid_object = guid_collection.insert({
+			"guid" : inserted_guid,
+			"expire" : inserted_timestamp,
+			"user" : inserted_user
+		})
+		client.close()
+		#end_setup
 
-# 		post_body = {
-# 			"guid" : valid_guid,
-# 			"user" : test_user,
-# 			"expire" : valid_timestamp
-# 		}
-# 		response = self.fetch('/' + guid_route + inserted_guid, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 200)
-# 		body = json_decode(response.body)
-# 		print(body)
-# 		assert body["user"] == test_user
-# 		assert body["expire"] == valid_timestamp
-# 		assert body["guid"] == inserted_guid
+		post_body = {
+			"guid" : valid_guid,
+			"user" : test_user,
+			"expire" : valid_timestamp
+		}
+		response = self.fetch('/' + guid_route + inserted_guid, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 200)
+		body = json_decode(response.body)
+		print(body)
+		assert body["user"] == test_user
+		assert body["expire"] == valid_timestamp
+		assert body["guid"] == inserted_guid
 
-# 	def test_POST_valid_guid_valid_name_valid_no_expire_update_existing(self):
-# 		#setup
-# 		client = MongoClient(constants.MONGO_URL, 27017)
-# 		db = client.cylance_challenge_db
-# 		guid_collection = db[constants.TEST_COLLECTION]
-# 		#TODO: Rename this to clear_db
-# 		guid_object = guid_collection.insert({
-# 			"guid" : inserted_guid,
-# 			"expire" : inserted_timestamp,
-# 			"user" : inserted_user
-# 		})
-# 		client.close()
-# 		#end_setup
+	def test_POST_valid_guid_valid_name_valid_no_expire_update_existing(self):
+		#setup
+		client = MongoClient(constants.MONGO_URL, 27017)
+		db = client.cylance_challenge_db
+		guid_collection = db[constants.TEST_COLLECTION]
+		#TODO: Rename this to clear_db
+		guid_object = guid_collection.insert({
+			"guid" : inserted_guid,
+			"expire" : inserted_timestamp,
+			"user" : inserted_user
+		})
+		client.close()
+		#end_setup
 
-# 		post_body = {
-# 			"guid" : valid_guid,
-# 			"user" : test_user
-# 		}
-# 		response = self.fetch('/' + guid_route + inserted_guid, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 200)
-# 		body = json_decode(response.body)
-# 		print(body)
-# 		assert body["user"] == test_user
-# 		assert body["expire"] == inserted_timestamp
-# 		assert body["guid"] == inserted_guid
+		post_body = {
+			"guid" : valid_guid,
+			"user" : test_user
+		}
+		response = self.fetch('/' + guid_route + inserted_guid, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 200)
+		body = json_decode(response.body)
+		print(body)
+		assert body["user"] == test_user
+		assert body["expire"] == inserted_timestamp
+		assert body["guid"] == inserted_guid
 
-# 	def test_POST_invalid_expire(self):
-# 		post_body = {
-# 			"expire" : invalid_timestamp_letter,
-# 			"user" : test_user
-# 		}
-# 		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
-# 		self.assertEqual(response.code, 400)
-# 		self.assertEqual(response.reason, constants.TIMESTAMP_INVALID)
+	def test_POST_invalid_expire(self):
+		post_body = {
+			"expire" : invalid_timestamp_letter,
+			"user" : test_user
+		}
+		response = self.fetch('/' + guid_route, method="POST", body=json.dumps(post_body))
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, constants.TIMESTAMP_INVALID)
