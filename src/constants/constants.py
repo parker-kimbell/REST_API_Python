@@ -20,3 +20,4 @@ REDIS_DB = 0
 #URLs for our connections to our cache and DB, respectively
 REDIS_URL = "localhost"
 MONGO_URL = "localhost"
+ 

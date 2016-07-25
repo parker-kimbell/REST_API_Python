@@ -1,5 +1,7 @@
+from tornado.escape import json_decode, json_encode
+
 def readGuid(guid_collection, client_guid, cache):
-	cached_guid = cache.get(client_guid)
+	cached_guid = cache.get(client_guid) 
 	if (cached_guid): # Case: We have found an instance of this guid in this cache so we will decode and return it
 		return json_decode(cached_guid.decode('utf-8').replace("'", '"'))
 	else: # Case: There is no cached version of this guid, so we need to determine if the guid exists in the database or not
