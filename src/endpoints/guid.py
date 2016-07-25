@@ -9,6 +9,8 @@ from tornado.escape import json_decode, json_encode
 import datetime
 import redis
 
+DELETE_INVALID = "DELETE requests require a GUID in the request URL"
+GET_INVALID = "GET requests require a GUID in the request URL"
 GUID_INVALID = "Given GUID is malformed. GUIDs must be 32 character hexadecimal strings with all uppercase letters."
 USER_INVALID = "User property must be present and non-blank in a POST request"
 TIMESTAMP_INVALID = "Expire property must be valid UNIX timestamp"
@@ -36,42 +38,46 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 		self.client.close()
 
 	def get(self, client_guid=None):
-		if(client_guid and guidIsValid(client_guid)):
-			# TODO Need to retrieve from DB here
-			guid_object = retrieveFromCacheOrDB(self.guid_collection, client_guid)
-			if (guid_object):
-				self.set_status(200)
-				self.write(json_encode(guid_object))
-			else:
-				self.set_status(404)
-		else:
-			self.set_status(400, GUID_INVALID)
-		self.finish()
+		try:
+			# Raises exception on detecting invalid guid
+			validateGuid(client_guid)
+
+			if (client_guid):
+				guid_object = readGuid(self.guid_collection, client_guid)
+				if (guid_object): # Case: we have found the requested guid
+					self.set_status(200)
+					self.write(json_encode(guid_object))
+				else: # Case: We received the message, but no data was found for the given guid
+					self.set_status(404)
+				self.finish()
+			else: # Case: User tried to make a get request without passing a GUID
+				raise Exception(GET_INVALID)
+		except Exception as e:
+			print(e.args[0])
+			self.set_status(400, e.args[0])
+			self.finish()
 
 	def post(self, client_guid=None):
 		try:
 			self.body = json_decode(self.request.body)
 			self.expiration = validateExpire(self.body)
 			self.user = validateUser(self.body)
-			self.guid = validateGuid(client_guid)
+			self.validated_guid = validateGuid(client_guid)
 
-			if (client_guid and guidIsValid(client_guid)): # Case: We are either updating a GUID or creating one that is user-specified
-				existing_guid = retrieveFromCacheOrDB(self.guid_collection, client_guid)
+			if (client_guid): # Case: We are either updating a GUID or creating one that is user-specified
+				existing_guid = readGuid(self.guid_collection, self.validated_guid)
 				if (existing_guid): # Case: We are updating an existing guid
 					updated_guid = updateGuid(self.guid_collection, self.buildUpdatedGuid(existing_guid), existing_guid)
 					self.set_status(200)
 					self.write(json_encode(updated_guid))
 				else: # Case: This guid has not been created yet
-					new_guid = insertGuid(self.guid_collection, self.buildNewGuid(client_guid))
+					new_guid = insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid))
 					self.set_status(201)
 					self.write(json_encode(new_guid))
-			elif (not client_guid): # Case: We are creating a new GUID and need to generate one on the server
-				generated_guid = createRandom32CharHexString()
-				new_guid = insertGuid(self.guid_collection, self.buildNewGuid(generated_guid))
+			else: # Case: We are creating a new GUID and need to generate one on the server. The client has not sent a GUID.
+				new_guid = insertGuid(self.guid_collection, self.buildNewGuid(self.validated_guid))
 				self.set_status(201)
 				self.write(json_encode(new_guid))
-			else: # Case: Something did not pass validation. TODO: Give specific error messages to what is missing in the API
-				self.set_status(400, "Your request is malformed")
 			self.finish()
 		except Exception as e:
 			print(e.args[0])
@@ -84,12 +90,20 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			raise
 
 	def delete(self, client_guid=None):
-		if (guidIsValid(client_guid)):
-			deleteGuid(self.guid_collection, client_guid)
-			self.set_status(200)
-		else:
-			self.set_status(400, GUID_INVALID)
-		self.finish()
+		try:
+			# Raises exception on detecting invalid guid
+			validateGuid(client_guid)
+
+			if (client_guid):
+				deleteGuid(self.guid_collection, client_guid)
+				self.set_status(200)
+			else: # Case: User tried to DELETE without sending a guid
+				self.set_status(400, DELETE_INVALID)
+			self.finish()
+		except Exception as e:
+			print(e.args[0])
+			self.set_status(400, e.args[0])
+			self.finish()
 
 	# This function builds a dictionary containing expire and user properties.
 	# At this point we have determined that expire and user have valid values if present
@@ -109,7 +123,7 @@ class GuidRequestHandler(tornado.web.RequestHandler):
 			"user" : self.body["user"]
 		}
 
-def retrieveFromCacheOrDB(guid_collection, client_guid):
+def readGuid(guid_collection, client_guid):
 	cached_guid = cache.get(client_guid)
 	if (cached_guid): # Case: We have found an instance of this guid in this cache so we will decode and return it
 		return json_decode(cached_guid.decode('utf-8').replace("'", '"'))
@@ -150,6 +164,9 @@ def validateUser(body):
 	else:
 		raise Exception(USER_INVALID)
 
+# This function will return a spec-valid GUID if passed a falsey parameter.
+# If passed an invalid guid it will raise an exception
+# If passed a valid guid it will return the valid guid
 def validateGuid(client_guid):
 	if(client_guid):
 		if(guidIsValid(client_guid)):

@@ -8,6 +8,8 @@ from tornado.escape import json_decode, json_encode
 import redis
 
 #TODO: Create common string constant file
+DELETE_INVALID = "DELETE requests require a GUID in the request URL"
+GET_INVALID = "GET requests require a GUID in the request URL"
 USER_INVALID = "User property must be present and non-blank in a POST request"
 TIMESTAMP_INVALID = "Expire property must be valid UNIX timestamp"
 GUID_INVALID = "Given GUID is malformed. GUIDs must be 32 character hexadecimal strings with all uppercase letters."
@@ -64,6 +66,11 @@ class TestGuidEndpointGet(AsyncHTTPTestCase):
 	def test_GET_guid_lower_case(self):
 		response = self.fetch('/' + guid_route + invalid_guid_lower_case, method="GET")
 		self.assertEqual(response.code, 400)
+
+	def test_GET_no_guid(self):
+		response = self.fetch('/' + guid_route, method="GET")
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, GET_INVALID)
 
 test_user = "test_user"
 inserted_user = "inserted_user"
@@ -130,6 +137,11 @@ class TestGuidEndpointDELETE(AsyncHTTPTestCase):
 		response = self.fetch('/' + guid_route + inserted_guid, method="DELETE")
 		self.assertEqual(response.code, 200)
 		assert not guid_collection.find_one({"guid":inserted_guid})
+
+	def test_DELETE_no_guid(self):
+		response = self.fetch('/' + guid_route, method="DELETE")
+		self.assertEqual(response.code, 400)
+		self.assertEqual(response.reason, DELETE_INVALID)
 
 class TestGuidEndpointPOST(AsyncHTTPTestCase):
 	def get_app(self):
