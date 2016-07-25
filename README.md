@@ -53,4 +53,5 @@ Thanks!
 8) Refactor ./src/test_guid.py
 9) Factor out magic numbers (specifically connection ports)
 10) Create actual configuration file (refactor constants file)
+11) Currently I'm accepting anything on the /guid/ endpoint and then validating after the request is received. Need to improve this regex.
 
