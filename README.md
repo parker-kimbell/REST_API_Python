@@ -1,18 +1,13 @@
 # GUID API
-A solution to the Cylance Python Coding Challenge. This was built in Python 3.5.2.
-
-## Intro
-Hello! This is my solution to the Cylance Python coding challenge. Had a lot of fun building this. There were a number of implicit requirements in the API description that I tried to cover. I've attempted to list them all under the Validations section. Let me know if you have any questions or problems during setup! Phone#360-831-6477 Email: parkerkimbell@gmail.com
-
-Thanks!
+An example of a REST API built in Python that utilizes Redis. This was built in Python 3.5.2.
 
 ## Project Setup (Using Python 3)
 0) Note: You will likely need to set up a virtualenv to run this on Mac. I found this very useful in doing that, if you’re not familiar (https://hackercodex.com/guide/python-development-environment-on-mac-osx/). Once you have created your foobar3 directory from that link, enter into your virtualenv with the ```source foobar3/bin/activate``` command. Now follow the steps below to run the app.
 1) In the project directory run
  ```pip install -r /path/to/requirements.txt```. This will install project requirements. I have also included a development_requirements file to show what I was using to aid development which you can install using the same method, but it's not necessary to run the service.
- 2) I'm using MongoDB (https://docs.mongodb.com/manual/installation/) as my backend. I didn't have time to get a server setup, so the app is expecting an instance to be running on your local machine. You can find the appropriate install for your OS at the link provided as well as instructions on how to get a local copy running.
+ 2) I'm using MongoDB (https://docs.mongodb.com/manual/installation/) as my backend. I didn't have time to get a server set up, so the app is expecting an instance to be running on your local machine. You can find the appropriate install for your OS at the link provided as well as instructions on how to get a local copy running.
  3) I used Redis for the cache. I don't have a conf file included but defaults should work. You can find the installer here http://redis.io/download. This will also help for Mac (http://jasdeep.ca/2012/05/installing-redis-on-mac-os-x/)
- 
+
 
 ## To Run
 1) Open a terminal in the project ```src``` directory. Run the ```python guid_server.py``` command to start the server. The default port is 3000.
